@@ -1,63 +1,74 @@
 from bs4 import BeautifulSoup
 from urllib.request import urlopen
 import time
+import mechanicalsoup
 
-url = "https://www.indeed.com/jobs?q=software%20engineer&l=Texas&vjk=34f268edad80901b"
+if __name__ == "__main__":
 
-results = {}
-job_count = 0
+    url = None
 
-for page_number in range(2, 6):
-    print(f"FINDING RESULTS FOR PAGE {page_number - 1}")
-    page = urlopen(url)
-    html = page.read().decode("utf-8")
-    soup = BeautifulSoup(html, "html.parser")
+    with mechanicalsoup.StatefulBrowser() as browser:
+        browser.open("https://www.indeed.com/")
+        browser.select_form("form[action='/jobs']")
+        browser["q"] = "Software Engineer"
+        browser["l"] = "Dallas, Texas"
+        response = browser.submit_selected()
+        url = browser.url
 
-    job_card_container = soup.find("div", id="mosaic-provider-jobcards")
-    job_cards = job_card_container.find_all("a", class_="tapItem")
+    if url:
+        results = {}
+        job_count = 0
 
-    job_card_container.findChild()
+        for page_number in range(2, 6):
+            print(f"FINDING RESULTS FOR PAGE {page_number - 1}")
+            page = urlopen(url)
+            html = page.read().decode("utf-8")
+            soup = BeautifulSoup(html, "html.parser")
 
-    for job in job_cards:
-        job_count += 1
+            job_card_container = soup.find("div", id="mosaic-provider-jobcards")
+            job_cards = job_card_container.find_all("a", class_="tapItem")
 
-        job_title = job.find("h2", class_="jobTitle")
-        job_title = job_title.findChild("span", recursive=False).string
+            job_card_container.findChild()
 
-        company_name = job.find("span", class_="companyName")
-        company_name = company_name.a
-        if company_name:
-            company_name = company_name.string
-        else:
-            company_name = None
+            for job in job_cards:
+                job_count += 1
 
-        salary = job.find("span", class_="salary-snippet")
+                job_title = job.find("h2", class_="jobTitle")
+                job_title = job_title.findChild("span", recursive=False).string
 
-        if salary:
-            salary = salary.string
-        else:
-            salary = None
+                company_name = job.find("span", class_="companyName")
+                company_name = company_name.a
+                if company_name:
+                    company_name = company_name.string
+                else:
+                    company_name = None
 
-        print(f"Company: {company_name}\nJob: {job_title}\nSalary: {salary}\n\n")
+                salary = job.find("span", class_="salary-snippet")
 
-        if company_name:
-            if company_name in results:
-                results[company_name].append([f"Job: {job_title}", f"Salary: {salary}"])
-            else:
-                results[company_name] = [ [f"Job: {job_title}", f"Salary: {salary}"] ]
+                if salary:
+                    salary = salary.string
+                else:
+                    salary = None
 
-    
-    nav_buttons = soup.find("ul", class_="pagination-list")
-    nav_buttons = nav_buttons.find_all("li")
-    for btn in nav_buttons:
-        anchor = btn.find("a")
-        if anchor:
-            if anchor["aria-label"] == str(page_number):
-                url = f"https://www.indeed.com{anchor['href']}"
-                break
-    
-    time.sleep(5)
+                print(f"Company: {company_name}\nJob: {job_title}\nSalary: {salary}\n\n")
 
-print(f"{job_count} jobs found.")
-print(results)
-    
+                if company_name:
+                    if company_name in results:
+                        results[company_name].append([f"Job: {job_title}", f"Salary: {salary}"])
+                    else:
+                        results[company_name] = [ [f"Job: {job_title}", f"Salary: {salary}"] ]
+
+            
+            nav_buttons = soup.find("ul", class_="pagination-list")
+            nav_buttons = nav_buttons.find_all("li")
+            for btn in nav_buttons:
+                anchor = btn.find("a")
+                if anchor:
+                    if anchor["aria-label"] == str(page_number):
+                        url = f"https://www.indeed.com{anchor['href']}"
+                        break
+            
+            time.sleep(5)
+
+        print(f"{job_count} jobs found.")
+        print(results)
